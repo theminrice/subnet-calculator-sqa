@@ -1,0 +1,26 @@
+name: SQA Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Install Dependencies
+        run: uv sync --dev
+
+      - name: Run Tests with Coverage
+        run: uv run pytest test_main.py -v --cov=main --cov-report=term-missing
