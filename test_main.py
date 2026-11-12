@@ -138,3 +138,115 @@ def test_halaman_utama():
 
 def test_metode_salah_405():
     assert client.post("/api/subnet").status_code == 405
+
+
+# ---------- VLSM (Tahap 8) ----------
+from main import alokasi_vlsm
+
+KASUS_VLSM = [
+    ("192.168.1.0/24", [100, 50, 20, 2], ["192.168.1.0/25", "192.168.1.128/26", "192.168.1.192/27", "192.168.1.224/30"]),
+    ("192.168.1.0/24", [62, 62, 62, 62], ["192.168.1.0/26", "192.168.1.64/26", "192.168.1.128/26", "192.168.1.192/26"]),
+    ("10.0.0.0/16", [126], ["10.0.0.0/25"]),
+    ("10.0.0.0/16", [127], ["10.0.0.0/24"]),
+    ("192.168.1.0/24", [3], ["192.168.1.0/29"]),
+    ("192.168.1.0/24", [1, 2], ["192.168.1.0/30", "192.168.1.4/30"]),
+    ("192.168.1.0/24", [2, 100, 20, 50], ["192.168.1.0/25", "192.168.1.128/26", "192.168.1.192/27", "192.168.1.224/30"]),
+    ("192.168.1.0/24", [30, 30, 30], ["192.168.1.0/27", "192.168.1.32/27", "192.168.1.64/27"]),
+    ("10.0.0.0/22", [500, 200], ["10.0.0.0/23", "10.0.2.0/24"]),
+    ("192.168.1.0/30", [2], ["192.168.1.0/30"]),
+]
+
+KASUS_VLSM_GAGAL = [
+    ("192.168.1.0/24", [200, 100]),
+    ("192.168.1.0/24", [62, 62, 62, 62, 2]),
+    ("192.168.1.0/30", [1, 1]),
+    ("192.168.1.5/24", [10]),
+    ("192.168.1.0", [10]),
+    ("192.168.1.0/33", [10]),
+    ("192.168.1.0/024", [10]),
+    ("192.168.1.0/31", [1]),
+    ("192.168.1.5/32", [1]),
+    ("192.168.1.0/24", []),
+    ("192.168.1.0/24", [0]),
+    ("192.168.1.0/24", [-5]),
+    ("192.168.1.0/24", [2.5]),
+    ("192.168.1.0/24", ["abc"]),
+    ("192.168.1.0/24", [True]),
+    ("192.168.1.0/24", [5000000000]),
+    ("192.168.1.0/24", None),
+    (None, [10]),
+]
+
+
+@pytest.mark.parametrize("network, kebutuhan, harapan", KASUS_VLSM)
+def test_vlsm_alokasi(network, kebutuhan, harapan):
+    assert [b["network_cidr"] for b in alokasi_vlsm(network, kebutuhan)] == harapan
+
+
+def test_vlsm_urutan_menurut_alokasi():
+    hasil_vlsm = alokasi_vlsm("192.168.1.0/24", [2, 100, 20, 50])
+    assert [b["kebutuhan"] for b in hasil_vlsm] == [100, 50, 20, 2]
+
+
+def test_vlsm_isi_blok():
+    blok = alokasi_vlsm("192.168.1.0/24", [100, 50, 20, 2])[0]
+    assert blok == {
+        "kebutuhan": 100,
+        "network_cidr": "192.168.1.0/25",
+        "mask": "255.255.255.128",
+        "network": "192.168.1.0",
+        "broadcast": "192.168.1.127",
+        "first_host": "192.168.1.1",
+        "last_host": "192.168.1.126",
+        "usable_hosts": 126,
+    }
+
+
+@pytest.mark.parametrize("network, kebutuhan", KASUS_VLSM_GAGAL)
+def test_vlsm_tidak_valid(network, kebutuhan):
+    with pytest.raises(ValueError):
+        alokasi_vlsm(network, kebutuhan)
+
+
+def test_api_vlsm_sukses():
+    r = client.post("/api/vlsm", json={"network": "192.168.1.0/24", "kebutuhan_host": [100, 50, 20, 2]})
+    assert r.status_code == 200
+    data = r.json()
+    assert isinstance(data, list) and len(data) == 4
+    assert [b["network_cidr"] for b in data] == [
+        "192.168.1.0/25", "192.168.1.128/26", "192.168.1.192/27", "192.168.1.224/30",
+    ]
+
+
+def test_api_vlsm_tidak_muat():
+    r = client.post("/api/vlsm", json={"network": "192.168.1.0/24", "kebutuhan_host": [200, 100]})
+    assert r.status_code == 400
+    assert r.json()["detail"]
+
+
+def test_api_vlsm_bukan_json():
+    r = client.post("/api/vlsm", content="bukan json", headers={"Content-Type": "application/json"})
+    assert r.status_code == 400
+    assert "detail" in r.json()
+
+
+@pytest.mark.parametrize(
+    "isi",
+    [
+        {"kebutuhan_host": [10]},
+        {"network": "192.168.1.0/24"},
+        {},
+        [1, 2, 3],
+        {"network": "192.168.1.0/24", "kebutuhan_host": "100"},
+        {"network": "192.168.1.0/24", "kebutuhan_host": 100},
+        {"network": "192.168.1.0/24", "kebutuhan_host": ["abc"]},
+        {"network": "192.168.1.0/24", "kebutuhan_host": [True]},
+        {"network": "192.168.1.0/24", "kebutuhan_host": [2.5]},
+        {"network": "192.168.1.0/24", "kebutuhan_host": []},
+        {"network": 123, "kebutuhan_host": [10]},
+    ],
+)
+def test_api_vlsm_input_tidak_valid(isi):
+    r = client.post("/api/vlsm", json=isi)
+    assert r.status_code == 400
+    assert "detail" in r.json()

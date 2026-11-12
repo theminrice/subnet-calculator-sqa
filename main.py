@@ -92,3 +92,12 @@ def api_subnet(ip: str | None = None, prefix: str | None = None):
 @app.get("/", response_class=HTMLResponse)
 def halaman():
     return INDEX_HTML.read_text(encoding="utf-8")
+
+
+def alokasi_vlsm(network_cidr: str, kebutuhan_host: list[int]) -> list[dict]:
+    raise NotImplementedError
+
+
+@app.post("/api/vlsm")
+def api_vlsm():
+    raise NotImplementedError
