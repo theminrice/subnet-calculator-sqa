@@ -89,15 +89,69 @@ def api_subnet(ip: str | None = None, prefix: str | None = None):
         return _galat(str(e))
 
 
-@app.get("/", response_class=HTMLResponse)
-def halaman():
-    return INDEX_HTML.read_text(encoding="utf-8")
+def _parse_network_induk(network_cidr) -> tuple[int, int]:
+    if not isinstance(network_cidr, str):
+        raise ValueError("Network induk harus berupa teks dengan format a.b.c.d/p.")
+    bagian = network_cidr.split("/")
+    if len(bagian) != 2:
+        raise ValueError("Network induk harus berformat a.b.c.d/p dan prefix wajib ada.")
+    ip_teks, prefix_teks = bagian
+    if not POLA_PREFIX_API.fullmatch(prefix_teks) or len(prefix_teks) > 3:
+        raise ValueError("Network induk: prefix harus berupa bilangan bulat tanpa angka nol di depan.")
+    prefix = int(prefix_teks)
+    if prefix > 30:
+        raise ValueError("Network induk: prefix harus 0 sampai 30 (blok terkecil adalah /30).")
+    ip_int = _ip_ke_int(ip_teks)
+    mask = (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF
+    if ip_int & mask != ip_int:
+        raise ValueError(
+            f"Network induk bukan alamat network yang tepat: seharusnya {_int_ke_ip(ip_int & mask)}/{prefix}."
+        )
+    return ip_int, prefix
 
 
 def alokasi_vlsm(network_cidr: str, kebutuhan_host: list[int]) -> list[dict]:
-    raise NotImplementedError
+    awal, prefix_induk = _parse_network_induk(network_cidr)
+    if not isinstance(kebutuhan_host, list) or not kebutuhan_host:
+        raise ValueError("Kebutuhan host harus berupa daftar yang tidak kosong.")
+    for k in kebutuhan_host:
+        if not isinstance(k, int) or isinstance(k, bool) or k < 1:
+            raise ValueError("Kebutuhan host harus berupa bilangan bulat minimal 1.")
+
+    urutan = sorted(kebutuhan_host, reverse=True)  # sort stabil: urutan input dipertahankan
+    ukuran = [max(4, 1 << (k + 1).bit_length()) for k in urutan]
+    if sum(ukuran) > 2 ** (32 - prefix_induk):
+        raise ValueError(
+            f"Kebutuhan host tidak muat di network {_int_ke_ip(awal)}/{prefix_induk}: "
+            f"dibutuhkan {sum(ukuran)} alamat, tersedia {2 ** (32 - prefix_induk)}."
+        )
+
+    hasil, alamat = [], awal
+    for k, u in zip(urutan, ukuran):
+        prefix = 32 - (u.bit_length() - 1)
+        blok = hitung_subnet(_int_ke_ip(alamat), prefix)
+        hasil.append({"kebutuhan": k, "network_cidr": f"{blok['network']}/{prefix}", **blok})
+        alamat += u
+    return hasil
 
 
 @app.post("/api/vlsm")
-def api_vlsm():
-    raise NotImplementedError
+async def api_vlsm(request: Request):
+    try:
+        isi = await request.json()
+    except ValueError:
+        return _galat("Body harus berupa JSON yang valid.")
+    if not isinstance(isi, dict):
+        return _galat("Body harus berupa objek JSON dengan field network dan kebutuhan_host.")
+    for nama in ("network", "kebutuhan_host"):
+        if nama not in isi:
+            return _galat(f"Field {nama} wajib diisi.")
+    try:
+        return alokasi_vlsm(isi["network"], isi["kebutuhan_host"])
+    except ValueError as e:
+        return _galat(str(e))
+
+
+@app.get("/", response_class=HTMLResponse)
+def halaman():
+    return INDEX_HTML.read_text(encoding="utf-8")
