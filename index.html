@@ -1,5 +1,204 @@
 <!DOCTYPE html>
 <html lang="id">
-<head><meta charset="utf-8"><title>Kalkulator Subnet &amp; VLSM</title></head>
-<body><p>Placeholder desain. Diganti dengan hasil Stitch, atau dengan versi final di Tahap 5.</p></body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalkulator Subnet &amp; VLSM</title>
+<style>
+  :root { --biru:#1a73e8; --biru-muda:#e8f0fe; --teks:#202124; --abu:#5f6368; --garis:#dadce0; --merah:#c5221f; --latar:#f8f9fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 "Google Sans","Segoe UI",system-ui,sans-serif; color:var(--teks); background:var(--latar); }
+  main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.6rem; font-weight:500; margin:0 0 4px; }
+  .sub { color:var(--abu); margin:0 0 24px; }
+  [role=tablist] { display:flex; gap:4px; border-bottom:1px solid var(--garis); margin-bottom:20px; }
+  [role=tab] { font:inherit; padding:10px 18px; border:0; background:none; color:var(--abu); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-1px; }
+  [role=tab][aria-selected=true] { color:var(--biru); border-bottom-color:var(--biru); font-weight:500; }
+  .kartu { background:#fff; border:1px solid var(--garis); border-radius:16px; padding:20px; margin-bottom:16px; }
+  .baris { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+  .kolom { flex:1 1 200px; min-width:0; }
+  .kolom.kecil { flex:0 1 120px; }
+  label { display:block; font-size:.875rem; color:var(--abu); margin-bottom:4px; }
+  input { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--garis); border-radius:8px; background:#fff; color:var(--teks); }
+  input:focus-visible, button:focus-visible { outline:2px solid var(--biru); outline-offset:2px; }
+  input[aria-invalid=true] { border-color:var(--merah); }
+  .galat { color:var(--merah); font-size:.875rem; margin:4px 0 0; min-height:0; }
+  .galat:empty { display:none; }
+  button.utama { font:inherit; font-weight:500; background:var(--biru); color:#fff; border:0; border-radius:999px; padding:10px 28px; cursor:pointer; margin-top:16px; }
+  button.utama:hover { background:#1765cc; }
+  button.sekunder { font:inherit; background:none; color:var(--biru); border:1px solid var(--garis); border-radius:999px; padding:6px 16px; cursor:pointer; }
+  button.hapus { font:inherit; background:none; border:0; color:var(--abu); cursor:pointer; padding:8px 10px; border-radius:8px; }
+  button.hapus:hover { background:var(--biru-muda); }
+  .kebutuhan { display:flex; gap:8px; margin-bottom:8px; }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:8px 24px; margin:0; }
+  dt { color:var(--abu); }
+  dd { margin:0; font-family:ui-monospace,Consolas,monospace; overflow-wrap:anywhere; }
+  .kosong { color:var(--abu); text-align:center; }
+  .gulir { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--garis); white-space:nowrap; }
+  td { font-family:ui-monospace,Consolas,monospace; }
+  th { color:var(--abu); font-weight:500; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kalkulator Subnet &amp; VLSM</h1>
+  <p class="sub">Hitung subnet IPv4 dan bagi network dengan VLSM.</p>
+
+  <div role="tablist" aria-label="Mode">
+    <button role="tab" id="tab-subnet" aria-selected="true" aria-controls="panel-subnet">Subnet</button>
+    <button role="tab" id="tab-vlsm" aria-selected="false" aria-controls="panel-vlsm">VLSM</button>
+  </div>
+
+  <section id="panel-subnet" role="tabpanel" aria-labelledby="tab-subnet">
+    <div class="kartu">
+      <div class="baris">
+        <div class="kolom">
+          <label for="ip">Alamat IP</label>
+          <input id="ip" placeholder="172.16.5.130" autocomplete="off" aria-describedby="galat-ip">
+          <p class="galat" id="galat-ip" role="alert"></p>
+        </div>
+        <div class="kolom kecil">
+          <label for="prefix">Prefix (0-32)</label>
+          <input id="prefix" inputmode="numeric" placeholder="25" autocomplete="off" aria-describedby="galat-prefix">
+          <p class="galat" id="galat-prefix" role="alert"></p>
+        </div>
+      </div>
+      <button class="utama" id="hitung-subnet">Hitung</button>
+    </div>
+    <div class="kartu kosong" id="kosong-subnet">Masukkan alamat IP dan prefix, lalu tekan Hitung.</div>
+    <div class="kartu" id="hasil-subnet" hidden>
+      <dl>
+        <dt>Mask</dt><dd data-k="mask"></dd>
+        <dt>Network</dt><dd data-k="network"></dd>
+        <dt>Broadcast</dt><dd data-k="broadcast"></dd>
+        <dt>Host pertama</dt><dd data-k="first_host"></dd>
+        <dt>Host terakhir</dt><dd data-k="last_host"></dd>
+        <dt>Host usable</dt><dd data-k="usable_hosts"></dd>
+      </dl>
+    </div>
+  </section>
+
+  <section id="panel-vlsm" role="tabpanel" aria-labelledby="tab-vlsm" hidden>
+    <div class="kartu">
+      <label for="network">Network induk (CIDR)</label>
+      <input id="network" placeholder="192.168.1.0/24" autocomplete="off" aria-describedby="galat-network">
+      <p class="galat" id="galat-network" role="alert"></p>
+      <p style="margin:16px 0 8px"><label style="margin:0">Kebutuhan host per subnet</label></p>
+      <div id="daftar"></div>
+      <p class="galat" id="galat-kebutuhan" role="alert"></p>
+      <button class="sekunder" id="tambah" type="button">Tambah kebutuhan</button><br>
+      <button class="utama" id="hitung-vlsm">Hitung</button>
+    </div>
+    <div class="kartu kosong" id="kosong-vlsm">Isi network induk dan kebutuhan host, lalu tekan Hitung.</div>
+    <div class="kartu gulir" id="hasil-vlsm" hidden>
+      <table>
+        <thead><tr><th>Kebutuhan</th><th>Subnet</th><th>Broadcast</th><th>Host pertama</th><th>Host terakhir</th><th>Host usable</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function panggil(url, opsi) {
+  try {
+    const r = await fetch(url, opsi);
+    let data = null;
+    try { data = await r.json(); } catch (e) { /* bukan JSON */ }
+    if (r.ok) return { ok: true, data };
+    return { ok: false, pesan: (data && data.detail) || "Layanan belum tersedia (status " + r.status + ")." };
+  } catch (e) {
+    return { ok: false, pesan: "Tidak dapat terhubung ke server." };
+  }
+}
+
+function setGalat(idInput, idPesan, teks) {
+  $(idPesan).textContent = teks || "";
+  if (idInput) $(idInput).setAttribute("aria-invalid", teks ? "true" : "false");
+}
+
+// ---- tab ----
+function pilihTab(nama) {
+  for (const t of ["subnet", "vlsm"]) {
+    $("tab-" + t).setAttribute("aria-selected", String(t === nama));
+    $("panel-" + t).hidden = t !== nama;
+  }
+}
+$("tab-subnet").onclick = () => pilihTab("subnet");
+$("tab-vlsm").onclick = () => pilihTab("vlsm");
+
+// ---- subnet ----
+async function hitungSubnet() {
+  setGalat("ip", "galat-ip", ""); setGalat("prefix", "galat-prefix", "");
+  const q = "ip=" + encodeURIComponent($("ip").value) + "&prefix=" + encodeURIComponent($("prefix").value);
+  const res = await panggil("/api/subnet?" + q);
+  $("hasil-subnet").hidden = !res.ok;
+  $("kosong-subnet").hidden = true;
+  if (!res.ok) {
+    if (/^prefix/i.test(res.pesan)) setGalat("prefix", "galat-prefix", res.pesan);
+    else setGalat("ip", "galat-ip", res.pesan);
+    return;
+  }
+  for (const dd of $("hasil-subnet").querySelectorAll("[data-k]")) {
+    const nilai = res.data[dd.dataset.k];
+    dd.textContent = nilai === null ? "tidak ada" : String(nilai);
+  }
+}
+$("hitung-subnet").onclick = hitungSubnet;
+for (const id of ["ip", "prefix"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") hitungSubnet(); });
+
+// ---- VLSM ----
+function tambahBaris(nilai) {
+  const baris = document.createElement("div");
+  baris.className = "kebutuhan";
+  const input = document.createElement("input");
+  input.inputMode = "numeric";
+  input.placeholder = "jumlah host";
+  input.setAttribute("aria-label", "Kebutuhan host");
+  input.value = nilai === undefined ? "" : nilai;
+  const hapus = document.createElement("button");
+  hapus.type = "button"; hapus.className = "hapus"; hapus.textContent = "Hapus";
+  hapus.setAttribute("aria-label", "Hapus baris kebutuhan");
+  hapus.onclick = () => { baris.remove(); };
+  baris.append(input, hapus);
+  $("daftar").append(baris);
+}
+$("tambah").onclick = () => tambahBaris();
+for (const n of [100, 50, 20, 2]) tambahBaris(n);
+
+async function hitungVlsm() {
+  setGalat("network", "galat-network", ""); setGalat(null, "galat-kebutuhan", "");
+  const kebutuhan = [...$("daftar").querySelectorAll("input")].map((i) => (/^-?[0-9]+$/.test(i.value) ? Number(i.value) : i.value));
+  const res = await panggil("/api/vlsm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ network: $("network").value, kebutuhan_host: kebutuhan }),
+  });
+  $("hasil-vlsm").hidden = !res.ok;
+  $("kosong-vlsm").hidden = true;
+  if (!res.ok) {
+    if (/^network/i.test(res.pesan)) setGalat("network", "galat-network", res.pesan);
+    else setGalat(null, "galat-kebutuhan", res.pesan);
+    return;
+  }
+  const tbody = $("hasil-vlsm").querySelector("tbody");
+  tbody.replaceChildren();
+  for (const b of res.data) {
+    const tr = document.createElement("tr");
+    for (const v of [b.kebutuhan, b.network_cidr, b.broadcast === null ? "tidak ada" : b.broadcast, b.first_host, b.last_host, b.usable_hosts]) {
+      const td = document.createElement("td");
+      td.textContent = String(v);
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+}
+$("hitung-vlsm").onclick = hitungVlsm;
+</script>
+</body>
 </html>
