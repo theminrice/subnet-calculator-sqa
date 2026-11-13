@@ -5,41 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kalkulator Subnet &amp; VLSM</title>
 <style>
-  :root { --biru:#1a73e8; --biru-muda:#e8f0fe; --teks:#202124; --abu:#5f6368; --garis:#dadce0; --merah:#c5221f; --latar:#f8f9fa; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:16px/1.5 "Google Sans","Segoe UI",system-ui,sans-serif; color:var(--teks); background:var(--latar); }
-  main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
-  h1 { font-size:1.6rem; font-weight:500; margin:0 0 4px; }
-  .sub { color:var(--abu); margin:0 0 24px; }
-  [role=tablist] { display:flex; gap:4px; border-bottom:1px solid var(--garis); margin-bottom:20px; }
-  [role=tab] { font:inherit; padding:10px 18px; border:0; background:none; color:var(--abu); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-1px; }
-  [role=tab][aria-selected=true] { color:var(--biru); border-bottom-color:var(--biru); font-weight:500; }
-  .kartu { background:#fff; border:1px solid var(--garis); border-radius:16px; padding:20px; margin-bottom:16px; }
-  .baris { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
-  .kolom { flex:1 1 200px; min-width:0; }
-  .kolom.kecil { flex:0 1 120px; }
-  label { display:block; font-size:.875rem; color:var(--abu); margin-bottom:4px; }
-  input { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--garis); border-radius:8px; background:#fff; color:var(--teks); }
-  input:focus-visible, button:focus-visible { outline:2px solid var(--biru); outline-offset:2px; }
-  input[aria-invalid=true] { border-color:var(--merah); }
-  .galat { color:var(--merah); font-size:.875rem; margin:4px 0 0; min-height:0; }
+  :root { --biru:#1a73e8; --biru-hover:#1557b0; --biru-muda:#e8f0fe; --teks:#202124; --abu:#5f6368; --garis:#dadce0; --garis-terang:#e8eaed; --merah:#d93025; --latar:#f8f9fa; --hijau:#137333; --hijau-bg:#e6f4ea; --hijau-garis:#ceead6; }
+  *, *::before, *::after { box-sizing:border-box; }
+  body { margin:0; font:400 15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Google Sans",system-ui,sans-serif; color:var(--teks); background:var(--latar); -webkit-font-smoothing:antialiased; }
+  main { max-width:760px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:1.75rem; font-weight:500; letter-spacing:-0.015em; margin:0 0 6px; color:var(--teks); }
+  .sub { color:var(--abu); font-size:0.95rem; margin:0 0 24px; line-height:1.5; }
+  [role=tablist] { display:flex; gap:4px; border-bottom:1px solid var(--garis); margin-bottom:24px; }
+  [role=tab] { font:inherit; font-size:0.95rem; font-weight:500; padding:10px 20px; border:0; background:none; color:var(--abu); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-1px; transition:color .15s,border-color .15s; }
+  [role=tab]:hover { color:var(--teks); }
+  [role=tab][aria-selected=true] { color:var(--biru); border-bottom-color:var(--biru); }
+  .kartu { background:#fff; border:1px solid var(--garis); border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 1px 2px rgba(60,64,67,0.06),0 1px 3px 1px rgba(60,64,67,0.03); }
+  .baris { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  .kolom { flex:1 1 220px; min-width:0; }
+  .kolom.kecil { flex:0 1 140px; }
+  label { display:block; font-size:0.85rem; font-weight:500; color:#3c4043; margin-bottom:6px; }
+  input { width:100%; font:inherit; font-size:0.95rem; padding:10px 14px; border:1px solid var(--garis); border-radius:8px; background:#fff; color:var(--teks); transition:border-color .15s,box-shadow .15s; }
+  input::placeholder { color:#80868b; }
+  input:focus-visible, button:focus-visible { outline:2px solid var(--biru); outline-offset:2px; border-color:var(--biru); }
+  input[aria-invalid=true] { border-color:var(--merah); box-shadow:0 0 0 1px var(--merah); }
+  .galat { color:var(--merah); font-size:0.8125rem; font-weight:500; margin:6px 0 0; min-height:0; }
   .galat:empty { display:none; }
-  button.utama { font:inherit; font-weight:500; background:var(--biru); color:#fff; border:0; border-radius:999px; padding:10px 28px; cursor:pointer; margin-top:16px; }
-  button.utama:hover { background:#1765cc; }
-  button.sekunder { font:inherit; background:none; color:var(--biru); border:1px solid var(--garis); border-radius:999px; padding:6px 16px; cursor:pointer; }
-  button.hapus { font:inherit; background:none; border:0; color:var(--abu); cursor:pointer; padding:8px 10px; border-radius:8px; }
-  button.hapus:hover { background:var(--biru-muda); }
-  .kebutuhan { display:flex; gap:8px; margin-bottom:8px; }
-  dl { display:grid; grid-template-columns:max-content 1fr; gap:8px 24px; margin:0; }
-  dt { color:var(--abu); }
-  dd { margin:0; font-family:ui-monospace,Consolas,monospace; overflow-wrap:anywhere; }
-  .kosong { color:var(--abu); text-align:center; }
-  .gulir { overflow-x:auto; }
-  table { border-collapse:collapse; width:100%; font-size:.9rem; }
-  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--garis); white-space:nowrap; }
-  td { font-family:ui-monospace,Consolas,monospace; }
-  th { color:var(--abu); font-weight:500; }
-  [hidden] { display:none !important; }
+  button.utama { font:inherit; font-weight:500; font-size:0.9rem; background:var(--biru); color:#fff; border:0; border-radius:9999px; padding:10px 32px; cursor:pointer; margin-top:20px; box-shadow:0 1px 2px rgba(60,64,67,0.3); transition:background .15s,box-shadow .15s; }
+  button.utama:hover { background:var(--biru-hover); box-shadow:0 1px 3px 1px rgba(60,64,67,0.15); }
+  button.sekunder { font:inherit; font-size:0.875rem; font-weight:500; background:#fff; color:var(--biru); border:1px solid var(--garis); border-radius:9999px; padding:8px 20px; cursor:pointer; transition:all .15s; }
+  button.sekunder:hover { background:#f8fafd; border-color:var(--biru); }
+  button.hapus { font:inherit; background:none; border:1px solid transparent; color:var(--abu); cursor:pointer; padding:8px 12px; border-radius:8px; font-size:0.85rem; font-weight:500; transition:all .15s; }
+  button.hapus:hover { color:var(--merah); background:#fce8e6; border-color:#fad2cf; }
+  .kebutuhan { display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+  .kebutuhan input { max-width:220px; }
+  #hasil-subnet dl { display:grid; grid-template-columns:140px 1fr; gap:10px 16px; margin:0; align-items:center; }
+  #hasil-subnet dt { color:var(--abu); font-size:0.875rem; font-weight:500; }
+  #hasil-subnet dd { margin:0; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:0.95rem; color:var(--teks); background:#f8f9fa; border:1px solid var(--garis-terang); border-radius:8px; padding:8px 14px; overflow-wrap:anywhere; }
+  #hasil-subnet dd[data-k="usable_hosts"] { font-weight:600; color:var(--hijau); background:var(--hijau-bg); border-color:var(--hijau-garis); }
+  .kartu.kosong { color:var(--abu); text-align:center; padding:36px 20px; font-size:0.925rem; background:#fff; border:1px dashed var(--garis); box-shadow:none; }
+  .kartu.gulir { overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0; } table { border-collapse:collapse; width:100%; font-size:0.875rem; text-align:left; } th { background:#f8f9fa; color:var(--abu); font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; padding:14px 16px; border-bottom:2px solid var(--garis); white-space:nowrap; } td { padding:12px 16px; border-bottom:1px solid #f1f3f4; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:0.875rem; color:var(--teks); white-space:nowrap; } tr:last-child td { border-bottom:none; } tr:hover td { background:#f8fafd; } [hidden] { display:none !important; }
 </style>
 </head>
 <body>
@@ -199,6 +199,7 @@ async function hitungVlsm() {
   }
 }
 $("hitung-vlsm").onclick = hitungVlsm;
+$("network").addEventListener("keydown", (e) => { if (e.key === "Enter") hitungVlsm(); });
 </script>
 </body>
 </html>
